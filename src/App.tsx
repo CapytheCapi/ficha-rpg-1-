@@ -5,6 +5,7 @@ import { auth } from './firebase';
 import Auth from './components/Auth';
 import CharacterSheet from './components/CharacterSheet';
 import CharacterList from './components/CharacterList';
+import NewCharacter from './components/NewCharacter';
 import styled from 'styled-components';
 
 const AppContainer = styled.div`
@@ -64,6 +65,14 @@ const App: React.FC = () => {
             element={
               <PrivateRoute>
                 <CharacterList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/characters/new"
+            element={
+              <PrivateRoute>
+                <NewCharacter />
               </PrivateRoute>
             }
           />

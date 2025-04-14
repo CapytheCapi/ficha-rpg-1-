@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
@@ -73,7 +73,6 @@ interface Character {
 
 const CharacterList: React.FC = () => {
   const [characters, setCharacters] = useState<Character[]>([]);
-  const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -97,47 +96,12 @@ const CharacterList: React.FC = () => {
     fetchCharacters();
   }, []);
 
-  const handleCreateCharacter = async () => {
-    if (!auth.currentUser || isCreating) return;
-
-    setIsCreating(true);
-    try {
-      const newCharacter = {
-        userId: auth.currentUser.uid,
-        name: '',
-        player: '',
-        origin: '',
-        class: '',
-        image: '',
-        attributes: [
-          { name: 'Força', code: 'FOR', value: 1 },
-          { name: 'Agilidade', code: 'AGI', value: 1 },
-          { name: 'Intelecto', code: 'INT', value: 1 },
-          { name: 'Presença', code: 'PRE', value: 1 },
-          { name: 'Vigor', code: 'VIG', value: 1 }
-        ],
-        createdAt: new Date()
-      };
-
-      const docRef = await addDoc(collection(db, 'characters'), newCharacter);
-      navigate(`/character/${docRef.id}`);
-    } catch (error) {
-      console.error('Erro ao criar ficha:', error);
-      alert('Erro ao criar ficha. Tente novamente.');
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
   return (
     <Container>
       <ButtonContainer>
         <BackButton onClick={() => navigate('/')}>Voltar</BackButton>
-        <Button 
-          onClick={handleCreateCharacter} 
-          disabled={isCreating}
-        >
-          {isCreating ? 'Criando...' : 'Criar Nova Ficha'}
+        <Button onClick={() => navigate('/characters/new')}>
+          Criar Nova Ficha
         </Button>
       </ButtonContainer>
       
