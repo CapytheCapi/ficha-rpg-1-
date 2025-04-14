@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, addDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import styled from 'styled-components';
+import Toast from './Toast';
 
 const Container = styled.div`
   max-width: 800px;
@@ -61,6 +62,11 @@ const CancelButton = styled(Button)`
   }
 `;
 
+const StatusMessage = styled.span`
+  margin-left: 10px;
+  color: #4CAF50;
+`;
+
 interface CharacterInfo {
   name: string;
   player: string;
@@ -71,6 +77,8 @@ interface CharacterInfo {
 const NewCharacter: React.FC = () => {
   const navigate = useNavigate();
   const [isCreating, setIsCreating] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [isToastClosing, setIsToastClosing] = useState(false);
   const [characterInfo, setCharacterInfo] = useState<CharacterInfo>({
     name: '',
     player: '',
@@ -102,13 +110,24 @@ const NewCharacter: React.FC = () => {
       };
 
       const docRef = await addDoc(collection(db, 'characters'), newCharacter);
-      navigate(`/character/${docRef.id}`);
+      setShowToast(true);
+      setTimeout(() => {
+        navigate(`/character/${docRef.id}`);
+      }, 1000);
     } catch (error) {
       console.error('Erro ao criar ficha:', error);
       alert('Erro ao criar ficha. Tente novamente.');
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const handleToastClose = () => {
+    setIsToastClosing(true);
+    setTimeout(() => {
+      setShowToast(false);
+      setIsToastClosing(false);
+    }, 300);
   };
 
   return (
@@ -151,11 +170,24 @@ const NewCharacter: React.FC = () => {
           >
             Cancelar
           </CancelButton>
-          <Button type="submit" disabled={isCreating}>
-            {isCreating ? 'Criando...' : 'Criar Ficha'}
-          </Button>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Button type="submit" disabled={isCreating}>
+              {isCreating ? 'Criando...' : 'Criar Ficha'}
+            </Button>
+            {isCreating && (
+              <StatusMessage>Criando sua ficha...</StatusMessage>
+            )}
+          </div>
         </ButtonContainer>
       </Form>
+
+      {showToast && (
+        <Toast
+          message="Ficha criada com sucesso!"
+          onClose={handleToastClose}
+          isClosing={isToastClosing}
+        />
+      )}
     </Container>
   );
 };

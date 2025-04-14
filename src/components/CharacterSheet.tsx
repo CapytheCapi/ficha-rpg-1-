@@ -4,6 +4,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import styled from 'styled-components';
 import html2pdf from 'html2pdf.js';
+import Toast from './Toast';
 
 interface CharacterInfo {
   name: string;
@@ -275,6 +276,11 @@ const BackButton = styled(Button)`
   }
 `;
 
+const StatusMessage = styled.span`
+  margin-left: 10px;
+  color: #4CAF50;
+`;
+
 const CharacterSheet: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -300,6 +306,8 @@ const CharacterSheet: React.FC = () => {
   const [diceRoll, setDiceRoll] = useState<DiceRoll | null>(null);
   const [showDicePopup, setShowDicePopup] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [isToastClosing, setIsToastClosing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -372,13 +380,24 @@ const CharacterSheet: React.FC = () => {
         attributes,
         lastUpdated: new Date()
       });
-      navigate('/characters');
+      setShowToast(true);
+      setTimeout(() => {
+        navigate('/characters');
+      }, 1000);
     } catch (error) {
       console.error('Erro ao salvar ficha:', error);
       alert('Erro ao salvar ficha. Tente novamente.');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleToastClose = () => {
+    setIsToastClosing(true);
+    setTimeout(() => {
+      setShowToast(false);
+      setIsToastClosing(false);
+    }, 300);
   };
 
   const exportToPDF = async () => {
@@ -501,21 +520,25 @@ const CharacterSheet: React.FC = () => {
             placeholder="Nome do Personagem"
             value={characterInfo.name}
             onChange={(e: ChangeEvent<HTMLInputElement>) => handleInfoChange('name', e.target.value)}
+            disabled={isSaving}
           />
           <Input
             placeholder="Jogador"
             value={characterInfo.player}
             onChange={(e: ChangeEvent<HTMLInputElement>) => handleInfoChange('player', e.target.value)}
+            disabled={isSaving}
           />
           <Input
             placeholder="Origem"
             value={characterInfo.origin}
             onChange={(e: ChangeEvent<HTMLInputElement>) => handleInfoChange('origin', e.target.value)}
+            disabled={isSaving}
           />
           <Input
             placeholder="Classe"
             value={characterInfo.class}
             onChange={(e: ChangeEvent<HTMLInputElement>) => handleInfoChange('class', e.target.value)}
+            disabled={isSaving}
           />
         </InfoContainer>
       </Header>
@@ -548,6 +571,7 @@ const CharacterSheet: React.FC = () => {
                 min="1"
                 max="5"
                 style={{ width: '40px', textAlign: 'center' }}
+                disabled={isSaving}
               />
             ) : (
               <div className="value" onClick={() => rollDice(attr.value)}>
@@ -599,11 +623,26 @@ const CharacterSheet: React.FC = () => {
       </ButtonContainer>
 
       <ButtonContainer>
-        <BackButton onClick={() => navigate('/characters')}>Voltar</BackButton>
-        <SaveButton onClick={handleSave} disabled={isSaving}>
-          {isSaving ? 'Salvando...' : 'Salvar Ficha'}
-        </SaveButton>
+        <BackButton onClick={() => navigate('/characters')} disabled={isSaving}>
+          Voltar
+        </BackButton>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <SaveButton onClick={handleSave} disabled={isSaving}>
+            {isSaving ? 'Salvando...' : 'Salvar Ficha'}
+          </SaveButton>
+          {isSaving && (
+            <StatusMessage>Salvando sua ficha...</StatusMessage>
+          )}
+        </div>
       </ButtonContainer>
+
+      {showToast && (
+        <Toast
+          message="Ficha salva com sucesso!"
+          onClose={handleToastClose}
+          isClosing={isToastClosing}
+        />
+      )}
     </Container>
   );
 };
