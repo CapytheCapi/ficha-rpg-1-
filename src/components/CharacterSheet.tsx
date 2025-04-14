@@ -1,10 +1,12 @@
-import React, { useState, ChangeEvent, useEffect, useRef } from 'react';
+import React, { useState, ChangeEvent, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import styled from 'styled-components';
 import html2pdf from 'html2pdf.js';
 import Toast from './Toast';
+import { useCharacterCache } from '../hooks/useCharacterCache';
+import debounce from 'lodash/debounce';
 
 interface CharacterInfo {
   name: string;
@@ -284,6 +286,7 @@ const StatusMessage = styled.span`
 const CharacterSheet: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { getCharacter, invalidateCache } = useCharacterCache();
   const [characterInfo, setCharacterInfo] = useState<CharacterInfo>({
     name: '',
     player: '',
@@ -310,47 +313,68 @@ const CharacterSheet: React.FC = () => {
   const [isToastClosing, setIsToastClosing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Implementa salvamento automático com debounce
+  const debouncedSave = useCallback(
+    debounce(async (data: any) => {
+      if (!id) return;
+
+      try {
+        const docRef = doc(db, 'characters', id);
+        await updateDoc(docRef, {
+          ...data,
+          lastUpdated: new Date()
+        });
+        invalidateCache(id);
+        setShowToast(true);
+      } catch (error) {
+        console.error('Erro ao salvar ficha:', error);
+      }
+    }, 1000),
+    [id]
+  );
+
   useEffect(() => {
-    const fetchCharacter = async () => {
+    const loadCharacter = async () => {
       if (!id) {
         setIsLoading(false);
         return;
       }
 
       try {
-        const docRef = doc(db, 'characters', id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        const character = await getCharacter(id);
+        if (character) {
           setCharacterInfo({
-            name: data.name || '',
-            player: data.player || '',
-            origin: data.origin || '',
-            class: data.class || '',
-            image: data.image || ''
+            name: character.name || '',
+            player: character.player || '',
+            origin: character.origin || '',
+            class: character.class || '',
+            image: character.image || ''
           });
-          setAttributes(data.attributes || []);
+          setAttributes(character.attributes || []);
         }
       } catch (error) {
         console.error('Erro ao carregar ficha:', error);
-        alert('Erro ao carregar ficha. Tente novamente.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchCharacter();
-  }, [id]);
+    loadCharacter();
+  }, [id, getCharacter]);
 
+  // Atualiza o handleInfoChange para usar salvamento automático
   const handleInfoChange = (field: keyof CharacterInfo, value: string) => {
-    setCharacterInfo(prev => ({ ...prev, [field]: value }));
+    const newInfo = { ...characterInfo, [field]: value };
+    setCharacterInfo(newInfo);
+    debouncedSave({ ...newInfo, attributes });
   };
 
+  // Atualiza o handleAttributeValueChange para usar salvamento automático
   const handleAttributeValueChange = (index: number, value: number) => {
     const newAttributes = [...attributes];
     newAttributes[index].value = value;
     setAttributes(newAttributes);
+    debouncedSave({ ...characterInfo, attributes: newAttributes });
   };
 
   const toggleEdit = (index: number) => {
@@ -374,16 +398,8 @@ const CharacterSheet: React.FC = () => {
 
     setIsSaving(true);
     try {
-      const docRef = doc(db, 'characters', id);
-      await updateDoc(docRef, {
-        ...characterInfo,
-        attributes,
-        lastUpdated: new Date()
-      });
-      setShowToast(true);
-      setTimeout(() => {
-        navigate('/characters');
-      }, 1000);
+      await debouncedSave.flush();
+      navigate('/characters');
     } catch (error) {
       console.error('Erro ao salvar ficha:', error);
       alert('Erro ao salvar ficha. Tente novamente.');
