@@ -83,6 +83,7 @@ const CharacterList: React.FC = () => {
       player: '',
       origin: '',
       class: '',
+      image: '',
       attributes: [
         { name: 'Força', code: 'FOR', value: 1 },
         { name: 'Agilidade', code: 'AGI', value: 1 },
@@ -92,26 +93,42 @@ const CharacterList: React.FC = () => {
       ]
     };
 
-    const docRef = await addDoc(collection(db, 'characters'), newCharacter);
-    navigate(`/character/${docRef.id}`);
+    try {
+      const docRef = await addDoc(collection(db, 'characters'), newCharacter);
+      navigate(`/character/${docRef.id}`);
+    } catch (error) {
+      console.error('Erro ao criar ficha:', error);
+    }
   };
 
   return (
     <Container>
       <Button onClick={handleCreateCharacter}>Criar Nova Ficha</Button>
       
-      {characters.map(character => (
-        <CharacterCard
-          key={character.id}
-          onClick={() => navigate(`/character/${character.id}`)}
-        >
-          <h3>{character.name || 'Ficha sem nome'}</h3>
-          <p>Jogador: {character.player}</p>
-          <p>Classe: {character.class}</p>
-        </CharacterCard>
-      ))}
+      {characters.length === 0 ? (
+        <EmptyMessage>Você ainda não tem fichas criadas. Clique em "Criar Nova Ficha" para começar!</EmptyMessage>
+      ) : (
+        characters.map(character => (
+          <CharacterCard
+            key={character.id}
+            onClick={() => navigate(`/character/${character.id}`)}
+          >
+            <h3>{character.name || 'Ficha sem nome'}</h3>
+            <p>Jogador: {character.player || 'Não informado'}</p>
+            <p>Classe: {character.class || 'Não informada'}</p>
+          </CharacterCard>
+        ))
+      )}
     </Container>
   );
 };
+
+const EmptyMessage = styled.div`
+  text-align: center;
+  padding: 20px;
+  background: #333;
+  border-radius: 10px;
+  margin-top: 20px;
+`;
 
 export default CharacterList; 

@@ -291,6 +291,7 @@ const CharacterSheet: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [diceRoll, setDiceRoll] = useState<DiceRoll | null>(null);
   const [showDicePopup, setShowDicePopup] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const fetchCharacter = async () => {
@@ -344,13 +345,21 @@ const CharacterSheet: React.FC = () => {
   const handleSave = async () => {
     if (!id) return;
 
-    const docRef = doc(db, 'characters', id);
-    await updateDoc(docRef, {
-      ...characterInfo,
-      attributes
-    });
-
-    navigate('/');
+    setIsSaving(true);
+    try {
+      const docRef = doc(db, 'characters', id);
+      await updateDoc(docRef, {
+        ...characterInfo,
+        attributes,
+        lastUpdated: new Date()
+      });
+      navigate('/');
+    } catch (error) {
+      console.error('Erro ao salvar ficha:', error);
+      alert('Erro ao salvar ficha. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const exportToPDF = async () => {
@@ -562,7 +571,9 @@ const CharacterSheet: React.FC = () => {
         />
       </ButtonContainer>
 
-      <SaveButton onClick={handleSave}>Salvar Ficha</SaveButton>
+      <SaveButton onClick={handleSave} disabled={isSaving}>
+        {isSaving ? 'Salvando...' : 'Salvar Ficha'}
+      </SaveButton>
     </Container>
   );
 };
