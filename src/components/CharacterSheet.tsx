@@ -290,7 +290,7 @@ const CharacterSheet: React.FC = () => {
     { name: 'Força', code: 'FOR', value: 1 },
     { name: 'Agilidade', code: 'AGI', value: 1 },
     { name: 'Intelecto', code: 'INT', value: 1 },
-    { name: 'Presença', code: 'PRE', value: 2 },
+    { name: 'Presença', code: 'PRE', value: 1 },
     { name: 'Vigor', code: 'VIG', value: 1 }
   ]);
 
@@ -300,24 +300,35 @@ const CharacterSheet: React.FC = () => {
   const [diceRoll, setDiceRoll] = useState<DiceRoll | null>(null);
   const [showDicePopup, setShowDicePopup] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchCharacter = async () => {
-      if (!id) return;
+      if (!id) {
+        setIsLoading(false);
+        return;
+      }
 
-      const docRef = doc(db, 'characters', id);
-      const docSnap = await getDoc(docRef);
+      try {
+        const docRef = doc(db, 'characters', id);
+        const docSnap = await getDoc(docRef);
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setCharacterInfo({
-          name: data.name || '',
-          player: data.player || '',
-          origin: data.origin || '',
-          class: data.class || '',
-          image: data.image || ''
-        });
-        setAttributes(data.attributes || []);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setCharacterInfo({
+            name: data.name || '',
+            player: data.player || '',
+            origin: data.origin || '',
+            class: data.class || '',
+            image: data.image || ''
+          });
+          setAttributes(data.attributes || []);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar ficha:', error);
+        alert('Erro ao carregar ficha. Tente novamente.');
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -351,7 +362,7 @@ const CharacterSheet: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!id) return;
+    if (!id || isSaving) return;
 
     setIsSaving(true);
     try {
@@ -461,6 +472,14 @@ const CharacterSheet: React.FC = () => {
     };
   };
 
+  if (isLoading) {
+    return (
+      <Container>
+        <div>Carregando ficha...</div>
+      </Container>
+    );
+  }
+
   return (
     <Container id="character-sheet">
       <Header>
@@ -526,7 +545,7 @@ const CharacterSheet: React.FC = () => {
                 value={attr.value}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => 
                   handleAttributeValueChange(index, parseInt(e.target.value))}
-                min="0"
+                min="1"
                 max="5"
                 style={{ width: '40px', textAlign: 'center' }}
               />
