@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { useCharacterCache } from '../hooks/useCharacterCache';
 import { Character } from '../types/Character';
 
-export const CharacterList: React.FC = () => {
+const CharacterList: React.FC = () => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { getCharacterList, invalidateCache } = useCharacterCache();
@@ -60,4 +60,6 @@ export const CharacterList: React.FC = () => {
       )}
     </div>
   );
-}; 
+};
+
+export default CharacterList; 
