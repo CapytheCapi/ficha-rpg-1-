@@ -4,6 +4,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from './firebase';
 import Auth from './components/Auth';
 import CharacterSheet from './components/CharacterSheet';
+import CharacterList from './components/CharacterList';
 import styled from 'styled-components';
 
 const AppContainer = styled.div`
@@ -34,6 +35,14 @@ const App: React.FC = () => {
           <Route path="/login" element={<Auth />} />
           <Route
             path="/"
+            element={
+              <PrivateRoute>
+                <CharacterList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/character/:id"
             element={
               <PrivateRoute>
                 <CharacterSheet />

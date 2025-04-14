@@ -1,4 +1,7 @@
 import React, { useState, ChangeEvent, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../firebase';
 import styled from 'styled-components';
 import html2pdf from 'html2pdf.js';
 
@@ -257,7 +260,16 @@ const AttributeValue = styled.div`
   }
 `;
 
+const SaveButton = styled(Button)`
+  background: #2196F3;
+  &:hover {
+    background: #1976D2;
+  }
+`;
+
 const CharacterSheet: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [characterInfo, setCharacterInfo] = useState<CharacterInfo>({
     name: '',
     player: '',
@@ -280,29 +292,37 @@ const CharacterSheet: React.FC = () => {
   const [diceRoll, setDiceRoll] = useState<DiceRoll | null>(null);
   const [showDicePopup, setShowDicePopup] = useState(false);
 
-  // Carregar dados salvos quando o componente iniciar
   useEffect(() => {
-    const savedData = localStorage.getItem('characterData');
-    if (savedData) {
-      const { characterInfo: savedInfo, attributes: savedAttributes } = JSON.parse(savedData);
-      setCharacterInfo(savedInfo);
-      setAttributes(savedAttributes);
-    }
-  }, []);
+    const fetchCharacter = async () => {
+      if (!id) return;
+
+      const docRef = doc(db, 'characters', id);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setCharacterInfo({
+          name: data.name || '',
+          player: data.player || '',
+          origin: data.origin || '',
+          class: data.class || '',
+          image: data.image || ''
+        });
+        setAttributes(data.attributes || []);
+      }
+    };
+
+    fetchCharacter();
+  }, [id]);
 
   const handleInfoChange = (field: keyof CharacterInfo, value: string) => {
-    setCharacterInfo((prev: CharacterInfo) => {
-      const newInfo = { ...prev, [field]: value };
-      saveData(newInfo, attributes);
-      return newInfo;
-    });
+    setCharacterInfo(prev => ({ ...prev, [field]: value }));
   };
 
   const handleAttributeValueChange = (index: number, value: number) => {
     const newAttributes = [...attributes];
     newAttributes[index].value = value;
     setAttributes(newAttributes);
-    saveData(characterInfo, newAttributes);
   };
 
   const toggleEdit = (index: number) => {
@@ -321,11 +341,16 @@ const CharacterSheet: React.FC = () => {
     }
   };
 
-  const saveData = (info: CharacterInfo, attrs: Attribute[]) => {
-    localStorage.setItem('characterData', JSON.stringify({
-      characterInfo: info,
-      attributes: attrs
-    }));
+  const handleSave = async () => {
+    if (!id) return;
+
+    const docRef = doc(db, 'characters', id);
+    await updateDoc(docRef, {
+      ...characterInfo,
+      attributes
+    });
+
+    navigate('/');
   };
 
   const exportToPDF = async () => {
@@ -366,7 +391,6 @@ const CharacterSheet: React.FC = () => {
           if (data.characterInfo && data.attributes) {
             setCharacterInfo(data.characterInfo);
             setAttributes(data.attributes);
-            saveData(data.characterInfo, data.attributes);
           }
         } catch (error) {
           alert('Erro ao importar o arquivo. Certifique-se de que é um arquivo válido.');
@@ -537,6 +561,8 @@ const CharacterSheet: React.FC = () => {
           onChange={handleImport}
         />
       </ButtonContainer>
+
+      <SaveButton onClick={handleSave}>Salvar Ficha</SaveButton>
     </Container>
   );
 };
