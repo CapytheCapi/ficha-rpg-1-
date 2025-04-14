@@ -1,25 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, writeBatch } from 'firebase/firestore';
 import { db, auth } from '../firebase';
+import { Character } from '../types/Character';
 
-interface Character {
-  id: string;
-  name: string;
-  player: string;
-  origin: string;
-  class: string;
-  image: string;
-  attributes: Array<{
-    name: string;
-    code: string;
-    value: number;
-  }>;
-  userId: string;
-  createdAt: Date;
-  lastUpdated?: Date;
-}
-
-interface CharacterCache {
+interface Cache {
   [key: string]: {
     data: Character;
     timestamp: number;
@@ -27,12 +11,42 @@ interface CharacterCache {
 }
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
-const characterCache: CharacterCache = {};
+const characterCache: Cache = {};
 let characterListCache: { data: Character[]; timestamp: number } | null = null;
 
 export const useCharacterCache = () => {
-  const [cache, setCache] = useState<CharacterCache>({});
+  const [cache, setCache] = useState<Cache>({});
   const [loading, setLoading] = useState(true);
+
+  const createCharacter = useCallback(async (characterData: Omit<Character, 'id'>) => {
+    if (!auth.currentUser) throw new Error('Usuário não autenticado');
+    
+    const batch = writeBatch(db);
+    const newCharacterRef = doc(collection(db, 'characters'));
+    const newCharacter: Character = {
+      ...characterData,
+      id: newCharacterRef.id,
+    };
+
+    batch.set(newCharacterRef, {
+      ...newCharacter,
+      userId: auth.currentUser.uid,
+      createdAt: new Date().toISOString(),
+    });
+
+    // Atualiza o cache imediatamente
+    setCache(prevCache => ({
+      ...prevCache,
+      [newCharacter.id]: {
+        data: newCharacter,
+        timestamp: Date.now(),
+      },
+    }));
+
+    // Commit das alterações no Firestore
+    await batch.commit();
+    return newCharacter;
+  }, []);
 
   const getCharacterList = useCallback(async (forceRefresh = false): Promise<Character[]> => {
     if (!auth.currentUser) return [];
@@ -116,6 +130,7 @@ export const useCharacterCache = () => {
   }, []);
 
   return {
+    createCharacter,
     getCharacterList,
     getCharacter,
     invalidateCache,

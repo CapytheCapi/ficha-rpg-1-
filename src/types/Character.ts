@@ -4,9 +4,13 @@ export interface Character {
   player: string;
   origin: string;
   class: string;
+  image: string;
   attributes: {
     name: string;
     code: string;
     value: number;
   }[];
+  userId?: string;
+  createdAt?: string;
+  lastUpdated?: string;
 } 

@@ -7,14 +7,7 @@ import html2pdf from 'html2pdf.js';
 import Toast from './Toast';
 import { useCharacterCache } from '../hooks/useCharacterCache';
 import debounce from 'lodash/debounce';
-
-interface CharacterInfo {
-  name: string;
-  player: string;
-  origin: string;
-  class: string;
-  image: string;
-}
+import { Character } from '../types/Character';
 
 interface Attribute {
   name: string;
@@ -278,30 +271,30 @@ const BackButton = styled(Button)`
   }
 `;
 
-const StatusMessage = styled.span`
-  margin-left: 10px;
-  color: #4CAF50;
+const StatusMessage = styled.div<{ $isError?: boolean }>`
+  color: ${props => props.$isError ? '#ff4444' : '#4CAF50'};
+  text-align: center;
+  margin-top: 10px;
 `;
 
 const CharacterSheet: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getCharacter, invalidateCache } = useCharacterCache();
-  const [characterInfo, setCharacterInfo] = useState<CharacterInfo>({
+  const { getCharacter, invalidateCache, createCharacter } = useCharacterCache();
+  const [characterInfo, setCharacterInfo] = useState<Omit<Character, 'id'>>({
     name: '',
     player: '',
     origin: '',
     class: '',
-    image: ''
+    image: '',
+    attributes: [
+      { name: 'Força', code: 'FOR', value: 1 },
+      { name: 'Agilidade', code: 'AGI', value: 1 },
+      { name: 'Intelecto', code: 'INT', value: 1 },
+      { name: 'Presença', code: 'PRE', value: 2 },
+      { name: 'Vigor', code: 'VIG', value: 1 }
+    ]
   });
-
-  const [attributes, setAttributes] = useState<Attribute[]>([
-    { name: 'Força', code: 'FOR', value: 1 },
-    { name: 'Agilidade', code: 'AGI', value: 1 },
-    { name: 'Intelecto', code: 'INT', value: 1 },
-    { name: 'Presença', code: 'PRE', value: 1 },
-    { name: 'Vigor', code: 'VIG', value: 1 }
-  ]);
 
   const [editingAttribute, setEditingAttribute] = useState<number | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -312,6 +305,7 @@ const CharacterSheet: React.FC = () => {
   const [showToast, setShowToast] = useState(false);
   const [isToastClosing, setIsToastClosing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [status, setStatus] = useState<{ message: string; isError: boolean } | null>(null);
 
   // Implementa salvamento automático com debounce
   const debouncedSave = useCallback(
@@ -348,9 +342,9 @@ const CharacterSheet: React.FC = () => {
             player: character.player || '',
             origin: character.origin || '',
             class: character.class || '',
-            image: character.image || ''
+            image: character.image || '',
+            attributes: character.attributes || []
           });
-          setAttributes(character.attributes || []);
         }
       } catch (error) {
         console.error('Erro ao carregar ficha:', error);
@@ -363,18 +357,17 @@ const CharacterSheet: React.FC = () => {
   }, [id, getCharacter]);
 
   // Atualiza o handleInfoChange para usar salvamento automático
-  const handleInfoChange = (field: keyof CharacterInfo, value: string) => {
-    const newInfo = { ...characterInfo, [field]: value };
-    setCharacterInfo(newInfo);
-    debouncedSave({ ...newInfo, attributes });
+  const handleInfoChange = (field: keyof Omit<Character, 'id' | 'attributes'>, value: string) => {
+    setCharacterInfo(prev => ({ ...prev, [field]: value }));
   };
 
   // Atualiza o handleAttributeValueChange para usar salvamento automático
   const handleAttributeValueChange = (index: number, value: number) => {
-    const newAttributes = [...attributes];
-    newAttributes[index].value = value;
-    setAttributes(newAttributes);
-    debouncedSave({ ...characterInfo, attributes: newAttributes });
+    setCharacterInfo(prev => {
+      const newAttributes = [...prev.attributes];
+      newAttributes[index] = { ...newAttributes[index], value };
+      return { ...prev, attributes: newAttributes };
+    });
   };
 
   const toggleEdit = (index: number) => {
@@ -394,16 +387,23 @@ const CharacterSheet: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!id || isSaving) return;
+    if (!characterInfo.name.trim()) {
+      setStatus({ message: 'Por favor, insira um nome para o personagem', isError: true });
+      return;
+    }
 
     setIsSaving(true);
+    setStatus({ message: 'Salvando personagem...', isError: false });
+
     try {
-      await debouncedSave.flush();
-      navigate('/characters');
+      const savedCharacter = await createCharacter(characterInfo);
+      setStatus({ message: 'Personagem salvo com sucesso!', isError: false });
+      setTimeout(() => {
+        navigate(`/character/${savedCharacter.id}`);
+      }, 1000);
     } catch (error) {
-      console.error('Erro ao salvar ficha:', error);
-      alert('Erro ao salvar ficha. Tente novamente.');
-    } finally {
+      console.error('Erro ao salvar personagem:', error);
+      setStatus({ message: 'Erro ao salvar personagem. Tente novamente.', isError: true });
       setIsSaving(false);
     }
   };
@@ -423,7 +423,7 @@ const CharacterSheet: React.FC = () => {
     const element = document.getElementById('character-sheet');
     const dataStr = JSON.stringify({
       characterInfo,
-      attributes
+      attributes: characterInfo.attributes
     });
     
     const opt = {
@@ -453,7 +453,6 @@ const CharacterSheet: React.FC = () => {
           const data = JSON.parse(content);
           if (data.characterInfo && data.attributes) {
             setCharacterInfo(data.characterInfo);
-            setAttributes(data.attributes);
           }
         } catch (error) {
           alert('Erro ao importar o arquivo. Certifique-se de que é um arquivo válido.');
@@ -466,7 +465,7 @@ const CharacterSheet: React.FC = () => {
   const exportJSON = () => {
     const data = JSON.stringify({
       characterInfo,
-      attributes
+      attributes: characterInfo.attributes
     }, null, 2);
     
     const blob = new Blob([data], { type: 'application/json' });
@@ -570,10 +569,10 @@ const CharacterSheet: React.FC = () => {
           </GlobalEditButton>
         </CenterCircle>
         
-        {attributes.map((attr: Attribute, index: number) => (
+        {characterInfo.attributes.map((attr: Attribute, index: number) => (
           <AttributeCircle
             key={index}
-            style={calculatePosition(index, attributes.length)}
+            style={calculatePosition(index, characterInfo.attributes.length)}
             className={editingAttribute !== null ? 'editing' : ''}
           >
             <h3>{attr.name}</h3>
@@ -658,6 +657,12 @@ const CharacterSheet: React.FC = () => {
           onClose={handleToastClose}
           isClosing={isToastClosing}
         />
+      )}
+
+      {status && (
+        <StatusMessage $isError={status.isError}>
+          {status.message}
+        </StatusMessage>
       )}
     </Container>
   );
