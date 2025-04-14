@@ -25,6 +25,20 @@ const Button = styled.button`
   }
 `;
 
+const BackButton = styled(Button)`
+  background: #666;
+  margin-right: 10px;
+  &:hover {
+    background: #555;
+  }
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+`;
+
 const CharacterCard = styled.div`
   background: #333;
   padding: 15px;
@@ -34,6 +48,14 @@ const CharacterCard = styled.div`
   &:hover {
     background: #444;
   }
+`;
+
+const EmptyMessage = styled.div`
+  text-align: center;
+  padding: 20px;
+  background: #333;
+  border-radius: 10px;
+  margin-top: 20px;
 `;
 
 interface Character {
@@ -103,7 +125,10 @@ const CharacterList: React.FC = () => {
 
   return (
     <Container>
-      <Button onClick={handleCreateCharacter}>Criar Nova Ficha</Button>
+      <ButtonContainer>
+        <BackButton onClick={() => navigate('/')}>Voltar</BackButton>
+        <Button onClick={handleCreateCharacter}>Criar Nova Ficha</Button>
+      </ButtonContainer>
       
       {characters.length === 0 ? (
         <EmptyMessage>Você ainda não tem fichas criadas. Clique em "Criar Nova Ficha" para começar!</EmptyMessage>
@@ -122,13 +147,5 @@ const CharacterList: React.FC = () => {
     </Container>
   );
 };
-
-const EmptyMessage = styled.div`
-  text-align: center;
-  padding: 20px;
-  background: #333;
-  border-radius: 10px;
-  margin-top: 20px;
-`;
 
 export default CharacterList; 

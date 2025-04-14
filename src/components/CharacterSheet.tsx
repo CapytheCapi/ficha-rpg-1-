@@ -267,6 +267,14 @@ const SaveButton = styled(Button)`
   }
 `;
 
+const BackButton = styled(Button)`
+  background: #666;
+  margin-right: 10px;
+  &:hover {
+    background: #555;
+  }
+`;
+
 const CharacterSheet: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -353,7 +361,7 @@ const CharacterSheet: React.FC = () => {
         attributes,
         lastUpdated: new Date()
       });
-      navigate('/');
+      navigate('/characters');
     } catch (error) {
       console.error('Erro ao salvar ficha:', error);
       alert('Erro ao salvar ficha. Tente novamente.');
@@ -571,9 +579,12 @@ const CharacterSheet: React.FC = () => {
         />
       </ButtonContainer>
 
-      <SaveButton onClick={handleSave} disabled={isSaving}>
-        {isSaving ? 'Salvando...' : 'Salvar Ficha'}
-      </SaveButton>
+      <ButtonContainer>
+        <BackButton onClick={() => navigate('/characters')}>Voltar</BackButton>
+        <SaveButton onClick={handleSave} disabled={isSaving}>
+          {isSaving ? 'Salvando...' : 'Salvar Ficha'}
+        </SaveButton>
+      </ButtonContainer>
     </Container>
   );
 };

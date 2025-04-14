@@ -34,7 +34,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/login" element={<Auth />} />
           <Route
-            path="/"
+            path="/characters"
             element={
               <PrivateRoute>
                 <CharacterList />
@@ -48,6 +48,10 @@ const App: React.FC = () => {
                 <CharacterSheet />
               </PrivateRoute>
             }
+          />
+          <Route
+            path="/"
+            element={<Navigate to="/characters" replace />}
           />
         </Routes>
       </AppContainer>
