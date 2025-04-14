@@ -13,11 +13,24 @@ const AppContainer = styled.div`
   color: white;
 `;
 
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #121212;
+  color: white;
+`;
+
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, loading] = useAuthState(auth);
 
   if (loading) {
-    return <div>Carregando...</div>;
+    return (
+      <LoadingContainer>
+        <div>Carregando...</div>
+      </LoadingContainer>
+    );
   }
 
   if (!user) {
@@ -28,11 +41,24 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 };
 
 const App: React.FC = () => {
+  const [user, loading] = useAuthState(auth);
+
+  if (loading) {
+    return (
+      <LoadingContainer>
+        <div>Carregando...</div>
+      </LoadingContainer>
+    );
+  }
+
   return (
     <Router>
       <AppContainer>
         <Routes>
-          <Route path="/login" element={<Auth />} />
+          <Route 
+            path="/login" 
+            element={user ? <Navigate to="/characters" /> : <Auth />} 
+          />
           <Route
             path="/characters"
             element={
@@ -51,7 +77,7 @@ const App: React.FC = () => {
           />
           <Route
             path="/"
-            element={<Navigate to="/characters" replace />}
+            element={<Navigate to={user ? "/characters" : "/login"} replace />}
           />
         </Routes>
       </AppContainer>
